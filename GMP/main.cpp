@@ -5,27 +5,6 @@
 #include <chrono>
 #include <math.h>
 #include <string.h>
-// 1000000 digits -> 75864 iterations
-const unsigned long DIGITS = 1000000; // 250000 took 1938435ms vs 1180054ms
-const unsigned long ITERATIONS = (unsigned long)ceil(DIGITS / log10(151931373056000));
-const unsigned long PERCISION = DIGITS*log2(10);
-
-// https://stackoverflow.com/questions/7459259/inserting-characters-into-a-string
-void append(char subject[], const char insert[], int pos) {
-    char *buf = (char*)malloc(strlen(subject) + strlen(insert) + 2);
-    memset(buf, 0, 100);
-
-    strncpy(buf, subject, pos); // copy at most first pos characters
-    int len = strlen(buf);
-    strcpy(buf+len, insert); // copy all of insert[] at the end
-    len += strlen(insert);  // increase the length by length of insert[]
-    strcpy(buf+len, subject+pos); // copy the rest
-
-    strcpy(subject, buf);   // copy it back to subject
-    // Note that subject[] must be big enough, or else segfault.
-    // deallocate buf[] here, if used malloc()
-    // e.g. free(buf);
-}
 
 void compute_sqrt_part(mpf_t* result)
 {
@@ -210,23 +189,39 @@ void compute(mpf_t& pi, mpz_t n)
 	mpf_div(pi, sqrt_part, s);
 }
 
-int main ()
+int main (int argc, char* argv[])
 {
-	mpf_set_default_prec(PERCISION);
-
-	std::cout << mpf_get_default_prec() << std::endl;
+	printf("Count: %d\n", argc);
+	if(argc <= 1 || argc > 2)
+	{
+		printf("Argument count is too low or too high.\n");
+		return 7;
+	}
+	// Convert argument to ulong
+	char* pCh;
+	printf("Arg1: %s\n", argv[0]);
+	unsigned long digits = strtoul(argv[1], &pCh, 10);
+	if(pCh == argv[1] || *pCh != '\0')
+	{
+		printf("Argument provided is not of type unsigned long.\n");
+		return 22;
+	}
+	unsigned long iterations = (unsigned long)ceil(digits / log10(151931373056000));
+	unsigned long precision = (unsigned long)digits*log2(10);
+	
+	mpf_set_default_prec(precision);
 
 	mpf_t result;
 	mpf_init_set_ui(result, 0);
 
-	mpz_t iterations;
-	mpz_init_set_ui(iterations, ITERATIONS);
+	mpz_t iter;
+	mpz_init_set_ui(iter, iterations);
 
-	gmp_printf("Running %Zd iterations. \n", iterations);
+	gmp_printf("Running %Zd iterations. \n", iter);
 
 	auto start = std::chrono::high_resolution_clock::now();
 
-	compute(result, iterations);
+	compute(result, iter);
 
 	auto end = std::chrono::high_resolution_clock::now();
 
@@ -235,24 +230,25 @@ int main ()
 	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
 	auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
 	auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
-	gmp_printf("Computation of %Zd iterations took %dms(%ds)(%dmin)(%dh).", iterations, millis, seconds, minutes, hours);
+	gmp_printf("Computation of %Zd iterations took %dms(%ds)(%dmin)(%dh).\n", iter, millis, seconds, minutes, hours);
 
-	mp_exp_t exponent;
-	// Convert to string
-	char* pi_string = mpf_get_str(NULL, &exponent, 10, 0, result);
-	// Insert . to the second place
-	append(pi_string, ".", 1);
+	long int dot = 0;
+	char* piStr = mpf_get_str(NULL, &dot, 10, 0, result);
+	
+	// Insert a dot
+	for(int i = digits; i >= dot; i--)
+	{
+		piStr[i] = piStr[i-1];
+	}
+	piStr[dot] = '.';
 
-	std::ofstream output_file;
-	output_file.open("pi.txt");
+	auto output_file = fopen("pi.txt", "w");
 
+	fputs(piStr, output_file);
 
-	output_file << pi_string;
-
-	output_file.close();
+	fclose(output_file);
 
 	mpf_clear(result);
-	free(pi_string);
 
 	return 0;
 }
