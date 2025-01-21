@@ -1,13 +1,17 @@
-#include <iostream>
-#include <fstream>
+/*
+ * A simple program for computing pi using a parallelized version of the binary split Chudnovsky algorithm (https://en.wikipedia.org/wiki/Chudnovsky_algorithm, https://en.wikipedia.org/wiki/Binary_splitting)
+ * The GMP library is used for large precision floats (https://en.wikipedia.org/wiki/GNU_Multiple_Precision_Arithmetic_Library)
+ * 
+ * https://github.com/Nobody1902/pi
+*/
+
 #include <future>
 #include <gmp.h>
 #include <chrono>
 #include <math.h>
 #include <string.h>
 
-void compute_sqrt_part(mpf_t* result)
-{
+void compute_sqrt_part(mpf_t* result) {
 	mpf_t a,b;
 	mpf_init(b);
 	mpf_init_set_ui(a, 426880);
@@ -18,24 +22,20 @@ void compute_sqrt_part(mpf_t* result)
 	// 426880 * sqrt(10005)
 	mpf_mul(*result, a, b);
 
-	gmp_printf("DONE: Computed sqrt part.\n");
+  mpf_clear(a);
+  mpf_clear(b);
 }
 
-void compute_P(mpz_t a, mpz_t b, mpz_t* result)
-{
-	// temp
+void compute_P(mpz_t a, mpz_t b, mpz_t* result) {
 	mpz_t c, d, e;
 	mpz_init_set_ui(c, 0);
 	mpz_init_set_ui(d, 0);
 	mpz_init_set_ui(e, 0);
 
-	// set result to 1 or the result is always 0
 	mpz_set_ui(*result, 1);
 
-	// j = a
 	mpz_t j;
-	for(mpz_init_set(j, a);mpz_cmp(j, b)<0;mpz_add_ui(j, j, 1))
-	{
+	for(mpz_init_set(j, a);mpz_cmp(j, b)<0;mpz_add_ui(j, j, 1)) {
 		// -(6j-1)
 		mpz_set_si(d, -1);
 		mpz_mul_ui(c, j, 6);
@@ -65,29 +65,18 @@ void compute_P(mpz_t a, mpz_t b, mpz_t* result)
 	mpz_clear(j);
 }
 
-void compute_Q(mpz_t a, mpz_t b, mpz_t* result)
-{
-	// temp
+void compute_Q(mpz_t a, mpz_t b, mpz_t* result) {
 	mpz_t c;
 	mpz_init_set_ui(c, 0);
 
-	// set result to 1 or the result is always 0
 	mpz_set_ui(*result, 1);
 
-	// https://www.wolframalpha.com/input?i=divisors+of+10939058860032000
-	// set the 10939058860032000 to the split version
 	mpz_t _10939058860032000;
-	mpz_init_set_ui(_10939058860032000, 32768);
-	mpz_mul_ui(_10939058860032000, _10939058860032000, 9);
-	mpz_mul_ui(_10939058860032000, _10939058860032000, 125);
-	mpz_mul_ui(_10939058860032000, _10939058860032000, 12167);
-	mpz_mul_ui(_10939058860032000, _10939058860032000, 24389);
+  mpz_set_str(_10939058860032000, "10939058860032000", 10);
 
-	// j = a
 	mpz_t j;
 
-	for(mpz_init_set(j, a);mpz_cmp(j, b)<0;mpz_add_ui(j, j, 1))
-	{
+	for(mpz_init_set(j, a);mpz_cmp(j, b)<0;mpz_add_ui(j, j, 1)) {
 		// j ^ 3
 		mpz_mul(c, j, j);
 		mpz_mul(c, c, j);
@@ -103,9 +92,7 @@ void compute_Q(mpz_t a, mpz_t b, mpz_t* result)
 	mpz_clear(j);
 }
 
-void compute_S(mpz_t a, mpz_t b, mpf_t* result)
-{
-	// temp
+void compute_S(mpz_t a, mpz_t b, mpf_t* result) {
 	mpf_t c, d, e;
 	mpf_init_set_ui(c, 0);
 	mpf_init_set_ui(d, 0);
@@ -118,11 +105,9 @@ void compute_S(mpz_t a, mpz_t b, mpf_t* result)
 	mpz_init(p);
 	mpz_init(q);
 
-	// j = a
 	mpz_t j;
 
-	for(mpz_init_set(j, a);mpz_cmp(j, b)<0;mpz_add_ui(j, j, 1))
-	{
+	for(mpz_init_set(j, a);mpz_cmp(j, b)<0;mpz_add_ui(j, j, 1)) {
 		// j + 1
 		mpz_set(f, j);
 		mpz_add_ui(f, f, 1);
@@ -164,8 +149,7 @@ void compute_S(mpz_t a, mpz_t b, mpf_t* result)
 	mpz_clear(q);
 }
 
-void compute(mpf_t& pi, mpz_t n)
-{
+void compute(mpf_t& pi, mpz_t n) {
 	mpz_t one;
 	mpz_init_set_ui(one, 1);
 
@@ -189,25 +173,21 @@ void compute(mpf_t& pi, mpz_t n)
 	mpf_div(pi, sqrt_part, s);
 }
 
-int main (int argc, char* argv[])
-{
-	printf("Count: %d\n", argc);
-	if(argc <= 1 || argc > 2)
-	{
+int main (int argc, char* argv[]) {
+	if(argc <= 1 || argc > 2) {
 		printf("Argument count is too low or too high.\n");
 		return 7;
 	}
 	// Convert argument to ulong
-	char* pCh;
-	printf("Arg1: %s\n", argv[0]);
-	unsigned long digits = strtoul(argv[1], &pCh, 10);
-	if(pCh == argv[1] || *pCh != '\0')
-	{
+	char* pch;
+	uint32_t digits = strtoul(argv[1], &pch, 10);
+	if(pch == argv[1] || *pch != '\0') {
 		printf("Argument provided is not of type unsigned long.\n");
 		return 22;
 	}
-	unsigned long iterations = (unsigned long)ceil(digits / log10(151931373056000));
-	unsigned long precision = (unsigned long)digits*log2(10);
+
+	uint32_t iterations = (unsigned long)ceil(digits / log10(151931373056000));
+	uint32_t precision = (unsigned long)digits*log2(10);
 	
 	mpf_set_default_prec(precision);
 
@@ -232,8 +212,8 @@ int main (int argc, char* argv[])
 	auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
 	gmp_printf("Computation of %Zd iterations took %dms(%ds)(%dmin)(%dh).\n", iter, millis, seconds, minutes, hours);
 
-	long int dot = 0;
-	char* piStr = mpf_get_str(NULL, &dot, 10, 0, result);
+	int32_t dot = 0;
+	char* piStr = mpf_get_str(NULL, (long int*)&dot, 10, 0, result);
 	
 	// Insert a dot
 	for(int i = digits; i >= dot; i--)
@@ -242,10 +222,9 @@ int main (int argc, char* argv[])
 	}
 	piStr[dot] = '.';
 
+  // Write to the file
 	auto output_file = fopen("pi.txt", "w");
-
 	fputs(piStr, output_file);
-
 	fclose(output_file);
 
 	mpf_clear(result);
